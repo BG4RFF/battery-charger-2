@@ -1,0 +1,132 @@
+
+#include<driverlib.h>
+#include "LCD.h"
+int ADCValue0;
+int ADCValue1;
+int ADCValue2;
+
+int main(void)
+
+{
+
+WDTCTL = WDTPW | WDTHOLD; // Stop WDT
+
+P1SEL1 |= BIT3; // Configure P1.3 for ADC
+
+P1SEL0 |= BIT3;
+
+P8SEL1 |= BIT6; // Configure P8.6 for ADC
+
+P8SEL0 |= BIT6;
+
+P8SEL1 |= BIT7; // Configure P8.7 for ADC
+
+P8SEL0 |= BIT7;
+
+PM5CTL0 &= ~LOCKLPM5;
+
+
+
+while(REFCTL0 & REFGENBUSY); 
+
+REFCTL0 |= REFVSEL_3 | REFON;
+
+
+// Configure ADC12
+
+ADC12CTL0 = ADC12SHT0_2 | ADC12ON;
+
+ADC12CTL1 = ADC12SHP| ADC12CONSEQ_3; 
+
+ADC12CTL2 &= 0xCF; // 8-bit resolution
+
+
+ADC12IER0 |= ADC12IE2; //Generate Interrupt for MEM2 ADC Data load
+
+
+ADC12MCTL0 |= ADC12INCH_3; // A3 chan
+
+ADC12MCTL0 |= ADC12VRSEL_1; //Vref = 2.5V
+
+
+ADC12MCTL1 |= ADC12INCH_4;// A4 chan
+
+ADC12MCTL1 |= ADC12VRSEL_1;//Vref = 2.5V
+
+
+ADC12MCTL2 |= ADC12INCH_5+ADC12EOS;// A5 chan , End of Sequence
+
+ADC12MCTL2 |= ADC12VRSEL_1;//Vref = 2.5V
+
+LCDInit(0);
+while(1)
+
+{
+
+__delay_cycles(5000); // Delay between conversions
+
+ADC12CTL0 |= ADC12ENC | ADC12SC; // Sampling and conversion start
+
+LCDWriteIntXY(0,1,ADC12MEM2,4);LCDWriteIntXY(6,0,ADC12MEM1,4);LCDWriteIntXY(0,0,ADC12MEM0,4);
+
+}
+
+}
+
+
+#pragma vector = ADC12_VECTOR
+
+__interrupt void ADC12_ISR(void)
+
+
+
+{
+
+switch (__even_in_range(ADC12IV, ADC12IV_ADC12RDYIFG))
+
+{
+
+case ADC12IV_NONE: break; // Vector 0: No interrupt
+
+case ADC12IV_ADC12OVIFG: break; // Vector 2: ADC12MEMx Overflow
+
+case ADC12IV_ADC12TOVIFG: break; // Vector 4: Conversion time overflow
+
+case ADC12IV_ADC12HIIFG: break; // Vector 6: ADC12BHI
+
+case ADC12IV_ADC12LOIFG: break; // Vector 8: ADC12BLO
+
+case ADC12IV_ADC12INIFG: break; // Vector 10: ADC12BIN
+
+case ADC12IV_ADC12IFG0: break; // Vector 12: ADC12MEM0 Interrupt
+
+case ADC12IV_ADC12IFG1: break; // Vector 14: ADC12MEM1
+
+case ADC12IV_ADC12IFG2: // Vector 16: ADC12MEM2
+
+ADCValue0 = ADC12MEM0;
+
+ADCValue1 = ADC12MEM1;
+
+ADCValue2 = ADC12MEM2; 
+
+break; 
+
+case ADC12IV_ADC12IFG3: break;
+
+case ADC12IV_ADC12IFG4: break; // Vector 20: ADC12MEM4
+
+case ADC12IV_ADC12IFG5: break; // Vector 22: ADC12MEM5
+
+case ADC12IV_ADC12IFG6: break; // Vector 24: ADC12MEM6
+
+case ADC12IV_ADC12IFG7: break; // Vector 26: ADC12MEM7
+
+case ADC12IV_ADC12IFG8: break; // Vector 28: ADC12MEM8
+
+case ADC12IV_ADC12IFG9: break; // Vector 30: ADC12MEM9
+
+
+
+}
+}
